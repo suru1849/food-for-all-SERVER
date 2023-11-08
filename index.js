@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 const app = express();
@@ -29,9 +29,30 @@ async function run() {
     const dataBase = client.db("food-For-All");
     const availableFoodCollections = dataBase.collection("available-food");
 
+    // available-food
     app.get("/availableFood", async (req, res) => {
-      const cursor = availableFoodCollections.find();
+      let options = {};
+      if (req?.query?.Sort === "1") {
+        options = {
+          sort: { expiredDateTime: 1 },
+        };
+      }
+
+      const query = {};
+      if (req?.query?.name) {
+        query["foodName"] = req.query.name;
+      }
+
+      const cursor = availableFoodCollections.find(query, options);
       const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.get("/availableFood/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const query = { _id: new ObjectId(id) };
+      const result = await availableFoodCollections.findOne(query);
       res.send(result);
     });
 
