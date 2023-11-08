@@ -40,6 +40,11 @@ async function run() {
     // available-food
     app.get("/availableFood", async (req, res) => {
       let options = {};
+      if (req?.query?.quantity === "1") {
+        options = {
+          sort: { foodQuantity: -1 },
+        };
+      }
       if (req?.query?.Sort === "1") {
         options = {
           sort: { expiredDateTime: 1 },
@@ -72,7 +77,7 @@ async function run() {
     app.put("/availableFood/:id", async (req, res) => {
       const id = req.params.id;
       const upDateFood = req.body;
-      console.log(upDateFood);
+
       const query = { _id: new ObjectId(id) };
       const options = { upsert: true };
       const food = {
@@ -84,7 +89,7 @@ async function run() {
           expiredDateTime: upDateFood.expiredDateTime,
           additionalNotes: upDateFood.additionalNotes,
           donator: upDateFood.donator,
-          foodStatus: upDateFood.foodStatus,
+          foodStatus: req?.query?.status ? "deliverd" : req?.query?.status,
         },
       };
       const result = await availableFoodCollections.updateOne(
@@ -121,6 +126,40 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await requestedFoodCollections.deleteOne(query);
+      res.send(result);
+    });
+
+    app.put("/requestedFood/update", async (req, res) => {
+      console.log(req?.query?.status);
+
+      const upFood = req.body;
+      const query = { _id: new ObjectId(upFood._id) };
+      const options = { upsert: true };
+      const food = {
+        $set: {
+          requester: upFood.requester,
+          donationMoney: upFood.donationMoney,
+          AdditionlNotes: upFood.AdditionlNotes,
+          requestedDate: upFood.requestedDate,
+          food: {
+            _id: upFood.food._id,
+            foodName: upFood.food.foodName,
+            foodImage: upFood.food.foodImage,
+            foodQuantity: upFood.food.foodQuantity,
+            pickupLocation: upFood.food.pickupLocation,
+            expiredDateTime: upFood.food.expiredDateTime,
+            additionalNotes: upFood.food.additionalNotes,
+            donator: upFood.donator,
+            foodStatus: req?.query?.status,
+          },
+          donator: upFood.donator,
+        },
+      };
+      const result = await requestedFoodCollections.updateOne(
+        query,
+        food,
+        options
+      );
       res.send(result);
     });
 
