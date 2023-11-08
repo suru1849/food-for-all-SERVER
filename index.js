@@ -69,6 +69,32 @@ async function run() {
       res.send(result);
     });
 
+    app.put("/availableFood/:id", async (req, res) => {
+      const id = req.params.id;
+      const upDateFood = req.body;
+      console.log(upDateFood);
+      const query = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const food = {
+        $set: {
+          foodName: upDateFood.foodName,
+          foodImage: upDateFood.foodImage,
+          foodQuantity: upDateFood.foodQuantity,
+          pickupLocation: upDateFood.pickupLocation,
+          expiredDateTime: upDateFood.expiredDateTime,
+          additionalNotes: upDateFood.additionalNotes,
+          donator: upDateFood.donator,
+          foodStatus: upDateFood.foodStatus,
+        },
+      };
+      const result = await availableFoodCollections.updateOne(
+        query,
+        food,
+        options
+      );
+      res.send(result);
+    });
+
     // Requested Food
     app.post("/requestedFood", async (req, res) => {
       const reqFood = req.body;
@@ -78,7 +104,6 @@ async function run() {
 
     app.get("/requestedFood", async (req, res) => {
       let query = {};
-      console.log(req?.query?.foodId);
 
       if (req?.query?.email) {
         query["requester.email"] = req?.query?.email;
