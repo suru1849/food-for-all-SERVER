@@ -28,6 +28,14 @@ async function run() {
     // dataBase
     const dataBase = client.db("food-For-All");
     const availableFoodCollections = dataBase.collection("available-food");
+    const requestedFoodCollections = dataBase.collection("requested-food");
+
+    // add food
+    app.post("/availableFood", async (req, res) => {
+      const food = req.body;
+      const result = await availableFoodCollections.insertOne(food);
+      res.send(result);
+    });
 
     // available-food
     app.get("/availableFood", async (req, res) => {
@@ -38,15 +46,31 @@ async function run() {
         };
       }
 
-      const query = {};
+      const query = { foodStatus: "available" };
       if (req?.query?.name) {
         query["foodName"] = req.query.name;
       }
       if (req?.query?.id) {
         query["_id"] = new ObjectId(req?.query?.id);
       }
+      if (req?.query?.email) {
+        query["donator.donatorEmail"] = req?.query?.email;
+      }
 
       const cursor = availableFoodCollections.find(query, options);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // Requested Food
+    app.post("/requestedFood", async (req, res) => {
+      const reqFood = req.body;
+      const result = await requestedFoodCollections.insertOne(reqFood);
+      res.send(result);
+    });
+
+    app.get("/requestedFood", async (req, res) => {
+      const cursor = requestedFoodCollections.find();
       const result = await cursor.toArray();
       res.send(result);
     });
