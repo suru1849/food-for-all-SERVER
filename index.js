@@ -42,17 +42,12 @@ async function run() {
       if (req?.query?.name) {
         query["foodName"] = req.query.name;
       }
+      if (req?.query?.id) {
+        query["_id"] = new ObjectId(req?.query?.id);
+      }
 
       const cursor = availableFoodCollections.find(query, options);
       const result = await cursor.toArray();
-      res.send(result);
-    });
-
-    app.get("/availableFood/:id", async (req, res) => {
-      const id = req.params.id;
-
-      const query = { _id: new ObjectId(id) };
-      const result = await availableFoodCollections.findOne(query);
       res.send(result);
     });
 
