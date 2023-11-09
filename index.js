@@ -1,13 +1,41 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 const app = express();
 
 // middle ware
-app.use(cors());
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
 app.use(express.json());
+
+// JWT verfiy
+const verfiyToken = async (req, res, next) => {
+  const token = req.cookies?.Token;
+  console.log("Token from middle: ", token);
+
+  if (!token) {
+    return res.status(401).send({ message: "unAuthorized" });
+  }
+  jwt.verify(token, process.env.ACCESS_SECRET_TOKEN, (err, decoded) => {
+    // err
+    if (err) {
+      return res.status(401).send({ message: "unAuthorized" });
+    }
+
+    // valid Token
+    req.user = decoded;
+    next();
+  });
+};
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.kapryhp.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -29,6 +57,30 @@ async function run() {
     const dataBase = client.db("food-For-All");
     const availableFoodCollections = dataBase.collection("available-food");
     const requestedFoodCollections = dataBase.collection("requested-food");
+
+    // JWT
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      console.log(user);
+
+      const token = jwt.sign(user, process.env.ACCESS_SECRET_TOKEN, {
+        expiresIn: "1h",
+      });
+
+      res
+        .cookie("Token", token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+        })
+        .send({ success: true });
+    });
+
+    app.post("/logout", async (req, res) => {
+      const user = req.body;
+      console.log("LogOut: ", user);
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
 
     // add food
     app.post("/availableFood", async (req, res) => {
@@ -55,9 +107,6 @@ async function run() {
       if (req?.query?.name) {
         query["foodName"] = req.query.name;
       }
-      if (req?.query?.id) {
-        query["_id"] = new ObjectId(req?.query?.id);
-      }
       if (req?.query?.email) {
         query["donator.donatorEmail"] = req?.query?.email;
       }
@@ -67,14 +116,21 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/availableFood/:id", async (req, res) => {
+    app.get("/availableFood/:id", verfiyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await availableFoodCollections.find(query).toArray();
+      res.send(result);
+    });
+
+    app.delete("/availableFood/:id", verfiyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await availableFoodCollections.deleteOne(query);
       res.send(result);
     });
 
-    app.put("/availableFood/:id", async (req, res) => {
+    app.put("/availableFood/:id", verfiyToken, async (req, res) => {
       const id = req.params.id;
       const upDateFood = req.body;
 
@@ -107,10 +163,14 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/requestedFood", async (req, res) => {
+    app.get("/requestedFood", verfiyToken, async (req, res) => {
       let query = {};
 
       if (req?.query?.email) {
+        if (req?.user?.email !== req?.query?.email) {
+          return res.status(403).send({ message: "Forbbider Access" });
+        }
+
         query["requester.email"] = req?.query?.email;
       }
       if (req?.query?.foodId) {
