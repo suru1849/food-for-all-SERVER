@@ -59,6 +59,7 @@ async function run() {
     // dataBase
     const dataBase = client.db("food-For-All");
     const usersCollections = dataBase.collection("users");
+    const foodsCollections = dataBase.collection("foods");
 
     // JWT set Token
     app.post("/jwt", async (req, res) => {
@@ -114,6 +115,15 @@ async function run() {
       );
 
       console.log(result);
+
+      res.send(result);
+    });
+
+    // FOOD
+    // save food
+    app.post("/foods/insert", verfiyToken, async (req, res) => {
+      const food = req.body;
+      const result = await foodsCollections.insertOne(food);
 
       res.send(result);
     });
