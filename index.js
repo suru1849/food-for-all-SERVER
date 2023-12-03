@@ -3,8 +3,8 @@ const cors = require("cors");
 const morgan = require("morgan");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 const app = express();
 
@@ -12,20 +12,22 @@ const app = express();
 const corsOptions = {
   origin: [
     "http://localhost:5173",
-    "https://food-for-all-5a3e3.firebaseapp.com",
+    "https://food-for-all-5a3e3.web.app/",
     "https://food-for-all-5a3e3.web.app",
+    "https://food-for-all-5a3e3.firebaseapp.com/",
+    "https://food-for-all-5a3e3.firebaseapp.com",
   ],
   credentials: true,
   optionSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use(cookieParser());
 app.use(morgan("dev"));
+app.use(cookieParser());
 
 // JWT verfiy
 const verfiyToken = async (req, res, next) => {
-  const token = req.cookies?.Token;
+  const token = req.cookies?.token;
   console.log("Token from middle: ", token);
 
   if (!token) {
@@ -71,13 +73,13 @@ async function run() {
         expiresIn: "365d",
       });
 
-      console.log("Token", token);
+      console.log("token", token);
 
       res
-        .cookie("Token", token, {
+        .cookie("token", token, {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "node" : "strict",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         })
         .send({ success: true });
     });
@@ -85,15 +87,15 @@ async function run() {
     app.get("/logout", async (req, res) => {
       try {
         res
-          .clearCookie("Token", {
+          .clearCookie("token", {
             maxAge: 0,
             secure: process.env.NODE_ENV === "production",
-            sameSite: process.env.NODE_ENV === "production" ? "node" : "strict",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
           })
           .send({ success: true });
         console.log("Logout successful");
-      } catch (err) {
-        res.status(501).send(err);
+      } catch (error) {
+        res.status(500).send(error);
       }
     });
 
