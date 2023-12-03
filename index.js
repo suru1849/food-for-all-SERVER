@@ -60,6 +60,7 @@ async function run() {
     const dataBase = client.db("food-For-All");
     const usersCollections = dataBase.collection("users");
     const foodsCollections = dataBase.collection("foods");
+    const requestFoodsCollections = dataBase.collection("request-foods");
 
     // JWT set Token
     app.post("/jwt", async (req, res) => {
@@ -67,7 +68,7 @@ async function run() {
       console.log("I need JWT -> ", email);
 
       const token = jwt.sign(email, process.env.ACCESS_SECRET_TOKEN, {
-        expiresIn: "1h",
+        expiresIn: "365d",
       });
 
       console.log("Token", token);
@@ -150,10 +151,147 @@ async function run() {
       res.send(result);
     });
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // Get a single avail-able food
+    app.get("/foods/:id", verfiyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await foodsCollections.findOne(query);
+
+      res.send(result);
+    });
+
+    // Get added food by a donator
+    app.get("/foods/donator/:email", verfiyToken, async (req, res) => {
+      const email = req.params.email;
+      const result = await foodsCollections
+        .find({
+          "donator.donatorEmail": email,
+        })
+        .toArray();
+
+      res.send(result);
+    });
+
+    // Delete a food of a donar
+    app.delete("/foods/delete/:id", verfiyToken, async (req, res) => {
+      const id = req.params.id;
+      const result = await foodsCollections.deleteOne({
+        _id: new ObjectId(id),
+      });
+
+      res.send(result);
+    });
+
+    // Update a food
+    app.put("/food/update/:id", verfiyToken, async (req, res) => {
+      const id = req.params.id;
+      const food = req.body;
+      const options = { upsert: true };
+      const updatedFood = {
+        $set: { ...food },
+      };
+
+      const result = await foodsCollections.updateOne(
+        { _id: new ObjectId(id) },
+        updatedFood,
+        options
+      );
+
+      res.send(result);
+    });
+
+    // Update a food Status
+    app.put("/food/update/status/:id", verfiyToken, async (req, res) => {
+      const id = req.params.id;
+      const { status } = req.body;
+      const options = { upsert: true };
+      const updatedFood = {
+        $set: {
+          foodStatus: status,
+        },
+      };
+
+      const result = await foodsCollections.updateOne(
+        { _id: new ObjectId(id) },
+        updatedFood,
+        options
+      );
+
+      res.send(result);
+    });
+
+    //Save Requested foods
+    app.post("/req-food", verfiyToken, async (req, res) => {
+      const food = req.body;
+      const result = await requestFoodsCollections.insertOne(food);
+
+      res.send(result);
+    });
+
+    // GetFood req by email
+    app.get("/req-food/:email", verfiyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { "requester.email": email };
+      const result = await requestFoodsCollections.find(query).toArray();
+
+      res.send(result);
+    });
+
+    // Get a requested food by foodId
+    app.get("/req-food/foodID/:id", verfiyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { "food.foodId": id };
+      const result = await requestFoodsCollections.findOne(query);
+
+      res.send(result);
+    });
+
+    // Update a requested food by foodId
+    app.put("/req-food/update/:id", verfiyToken, async (req, res) => {
+      const id = req.params.id;
+      const { status } = req.body;
+      const query = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+
+      const result = await requestFoodsCollections.updateOne(
+        query,
+        {
+          $set: {
+            status: status,
+          },
+        },
+        options
+      );
+
+      res.send(result);
+    });
+
+    // Delete req food
+    app.delete("/req-food/delete/:id", verfiyToken, async (req, res) => {
+      const id = req.params.id;
+      const result = await requestFoodsCollections.deleteOne({
+        _id: new ObjectId(id),
+      });
+
+      res.send(result);
+    });
+
+    // Website Statistics
+    app.get("/statictic", async (req, res) => {
+      const result1 = await usersCollections.countDocuments();
+      const result2 = await requestFoodsCollections
+        .find({
+          status: "delivered",
+        })
+        .count();
+
+      res.send({ users: result1, getService: result2 });
+    });
+
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
