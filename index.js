@@ -128,6 +128,28 @@ async function run() {
       res.send(result);
     });
 
+    // Get available Foods
+    app.get("/foods", async (req, res) => {
+      const { quantity, expiredate, searchItem } = req.query;
+      console.log(req.query);
+      let sortObj = {};
+      let query = { foodStatus: "available" };
+
+      if (quantity) {
+        sortObj = { ...sortObj, foodQuantity: parseInt(quantity) };
+      }
+      if (expiredate && expiredate === "-1") {
+        sortObj = { ...sortObj, expiredDateTime: -1 };
+      }
+      if (searchItem && searchItem !== " ") {
+        query = { ...query, foodName: { $regex: searchItem, $options: "i" } };
+      }
+
+      const result = await foodsCollections.find(query).sort(sortObj).toArray();
+
+      res.send(result);
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
