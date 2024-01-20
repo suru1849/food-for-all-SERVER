@@ -12,6 +12,7 @@ const app = express();
 const corsOptions = {
   origin: [
     "http://localhost:5173",
+    "http://localhost:5173/",
     "https://food-for-all-5a3e3.web.app/",
     "https://food-for-all-5a3e3.web.app",
     "https://food-for-all-5a3e3.firebaseapp.com/",
@@ -122,6 +123,51 @@ async function run() {
       res.send(result);
     });
 
+    // Get users
+    app.get("/user", verfiyToken, async (req, res) => {
+      const result = await usersCollections.find().toArray();
+      console.log(result);
+      res.send(result);
+    });
+
+    // Get user status
+    app.get("/user/status/:email", verfiyToken, async (req, res) => {
+      const email = req.params.email;
+      const { status } = await usersCollections.findOne({
+        email: email,
+      });
+
+      res.send({ status: status });
+    });
+
+    // Update user status
+    app.put("/user/:id", verfiyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const user = await usersCollections.findOne(query);
+
+      delete user?._id;
+
+      let updatedStatus = "";
+
+      if (user.status === "admin") {
+        updatedStatus = "verified";
+      } else {
+        updatedStatus = "admin";
+      }
+      user.status = updatedStatus;
+
+      const updatedUser = {
+        $set: { ...user },
+      };
+
+      const result = await usersCollections.updateOne(query, updatedUser, {
+        upsert: true,
+      });
+
+      res.send(result);
+    });
+
     // FOOD
     // save food
     app.post("/foods/insert", verfiyToken, async (req, res) => {
@@ -133,7 +179,7 @@ async function run() {
 
     // Get available Foods
     app.get("/foods", async (req, res) => {
-      const { quantity, expiredate, searchItem } = req.query;
+      const { quantity, expiredate, searchItem, find } = req.query;
       console.log(req.query);
       let sortObj = {};
       let query = { foodStatus: "available" };
@@ -146,6 +192,10 @@ async function run() {
       }
       if (searchItem && searchItem !== " ") {
         query = { ...query, foodName: { $regex: searchItem, $options: "i" } };
+      }
+
+      if (find && find == "all") {
+        query = {};
       }
 
       const result = await foodsCollections.find(query).sort(sortObj).toArray();
