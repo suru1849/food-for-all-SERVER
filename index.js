@@ -63,6 +63,10 @@ async function run() {
     const dataBase = client.db("food-For-All");
     const usersCollections = dataBase.collection("users");
     const foodsCollections = dataBase.collection("foods");
+    const donationMoneyCollections = dataBase.collection("donation-money");
+    const donationDistributionCollections = dataBase.collection(
+      "donation-distribution"
+    );
     const requestFoodsCollections = dataBase.collection("request-foods");
 
     // JWT set Token
@@ -164,6 +168,45 @@ async function run() {
       const result = await usersCollections.updateOne(query, updatedUser, {
         upsert: true,
       });
+
+      res.send(result);
+    });
+
+    // Donation Money
+    // Insert Donation Money
+    app.post("/donationMoney/insert", async (req, res) => {
+      const donationMoney = req.body;
+      console.log(donationMoney);
+      const result = await donationMoneyCollections.insertOne(donationMoney);
+
+      res.send(result);
+    });
+
+    // Get All Donations
+    app.get("/donationMoney", async (req, res) => {
+      const result = await donationMoneyCollections.find().toArray();
+
+      res.send(result);
+    });
+
+    // get a specific donation
+    app.get("/donationMoney/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await donationMoneyCollections
+        .find({
+          donatorEmail: email,
+        })
+        .toArray();
+      res.send(result);
+    });
+
+    // Donation Distribution
+    // Insert Donation
+    app.post("/donationDistribution/insert", async (req, res) => {
+      const donationMoney = req.body;
+      const result = await donationDistributionCollections.insertOne(
+        donationMoney
+      );
 
       res.send(result);
     });
